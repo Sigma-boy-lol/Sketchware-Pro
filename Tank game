@@ -1,0 +1,162 @@
+package com.tank.ww2;
+
+import android.app.Activity;
+import android.os.Bundle;
+
+public class MainActivity extends Activity {
+    private TankGameView gameView;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        gameView = new TankGameView(this);
+        setContentView(gameView);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        gameView.resume();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        gameView.pause();
+    }
+}package com.tank.ww2;
+
+import android.content.Context;
+import android.graphics.*;
+import android.view.*;
+
+public class TankGameView extends SurfaceView implements Runnable {
+    private Thread thread;
+    private boolean isRunning;
+    private SurfaceHolder holder;
+    private Paint paint;
+    private Tank playerTank;
+    private Shell shell;
+
+    public TankGameView(Context context) {
+        super(context);
+        holder = getHolder();
+        paint = new Paint();
+        playerTank = new Tank(300, 600);
+    }
+
+    @Override
+    public void run() {
+        while (isRunning) {
+            if (!holder.getSurface().isValid()) continue;
+
+            Canvas canvas = holder.lockCanvas();
+            canvas.drawColor(Color.rgb(60, 60, 60));
+
+            playerTank.update();
+            playerTank.draw(canvas, paint);
+
+            if (shell != null) {
+                shell.update();
+                shell.draw(canvas, paint);
+            }
+
+            holder.unlockCanvasAndPost(canvas);
+
+            try { Thread.sleep(16); } catch (Exception e) {}
+        }
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        if (event.getAction() == MotionEvent.ACTION_DOWN) {
+            float x = event.getX(), y = event.getY();
+            if (x > getWidth() / 2f) playerTank.moveRight();
+            else playerTank.moveLeft();
+        } else if (event.getAction() == MotionEvent.ACTION_UP) {
+            playerTank.stop();
+            shell = new Shell(playerTank.x + 45, playerTank.y);
+        }
+        return true;
+    }
+
+    public void resume() {
+        isRunning = true;
+        thread = new Thread(this);
+        thread.start();
+    }
+
+    public void pause() {
+        isRunning = false;
+        try { thread.join(); } catch (Exception e) {}
+    }
+}package com.tank.ww2;
+
+import android.graphics.*;
+
+public class Tank {
+    public float x, y;
+    private float speed = 0;
+
+    public Tank(float x, float y) {
+        this.x = x;
+        this.y = y;
+    }
+
+    public void moveRight() {
+        speed = 5;
+    }
+
+    public void moveLeft() {
+        speed = -5;
+    }
+
+    public void stop() {
+        speed = 0;
+    }
+
+    public void update() {
+        x += speed;
+    }
+
+    public void draw(Canvas canvas, Paint paint) {
+        paint.setColor(Color.GREEN);
+        canvas.drawRect(x, y, x + 100, y + 50, paint);
+        paint.setColor(Color.DKGRAY);
+        canvas.drawRect(x + 40, y - 20, x + 60, y, paint); // canon
+    }
+}package com.tank.ww2;
+
+import android.graphics.*;
+
+public class Shell {
+    public float x, y;
+    private float speed = 10;
+
+    public Shell(float x, float y) {
+        this.x = x;
+        this.y = y;
+    }
+
+    public void update() {
+        y -= speed;
+    }
+
+    public void draw(Canvas canvas, Paint paint) {
+        paint.setColor(Color.YELLOW);
+        canvas.drawCircle(x, y, 5, paint);
+    }
+}<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.tank.ww2">
+
+    <application android:label="WW2 Tank Sandbox" android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen">
+        <activity android:name=".MainActivity"
+            android:screenOrientation="landscape"
+            android:configChanges="keyboardHidden|orientation|screenSize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
